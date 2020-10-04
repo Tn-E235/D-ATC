@@ -37,7 +37,7 @@
     <ClInclude Include="stdafx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DistanceIni.h">
+    <ClInclude Include="readIni.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

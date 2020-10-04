@@ -167,7 +167,7 @@
   <ItemGroup>
     <ClInclude Include="Ats.h" />
     <ClInclude Include="atsplugin.h" />
-    <ClInclude Include="DistanceIni.h" />
+    <ClInclude Include="readIni.h" />
     <ClInclude Include="stdafx.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
