@@ -152,6 +152,8 @@ public:
     struct OPTION
     {
         int brake;
+        int split;
+        int margin;
     } OPTION;
 
 protected:
@@ -200,6 +202,8 @@ protected:
 
         s = _T("OPTION");
         inimoni::inirw(r, f, s, _T("brake            "), OPTION.brake);
+        inimoni::inirw(r, f, s, _T("split            "), OPTION.split);
+        inimoni::inirw(r, f, s, _T("margin           "), OPTION.margin);
         return true;
     }
 
@@ -235,6 +239,8 @@ protected:
         BEACON.type3 = 3;
         BEACON.type4 = 4;
         OPTION.brake = 1;
+        OPTION.split = 1;
+        OPTION.margin = 0;
     }
 };
 typedef readIni ReadIniFile; //êVãåå›ä∑

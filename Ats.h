@@ -47,6 +47,9 @@ int SET_TRACKNAME;
 int STOP_DISTANCE;
 
 bool DATC_BRAKE;
+int SPLIT;
+int MARGIN;
+
 struct stationSection {
 	int id;
 	int start;
@@ -55,12 +58,10 @@ struct stationSection {
 
 stationSection staSection[99];
 
-int panelIdx[5] = {0,1,2,3,4};
-int mode;
 int signalIdx;
 int stationIdx;
 double trackCircuit[20];
-int loopNum;
+double datcBeaconDistance;
 
 double getPatternBxN(double, double);
 bool isPatternAP(double, double);

@@ -46,7 +46,8 @@ BOOL APIENTRY DllMain( HANDLE hModule, DWORD  ul_reason_for_call, LPVOID lpReser
 	STOP_DISTANCE             = ini.BEACON.type4;
 	
 	DATC_BRAKE = (ini.OPTION.brake > 0) ? true : false;
-
+	SPLIT      = ini.OPTION.split;
+	MARGIN     = ini.OPTION.margin;
 	return TRUE;
 }
 ATS_API int WINAPI GetPluginVersion() { return ATS_VERSION; }
@@ -79,9 +80,7 @@ ATS_API ATS_HANDLES WINAPI Elapse(ATS_VEHICLESTATE vehicleState, int *panel, int
 	output.ConstantSpeed = ATS_CONSTANTSPEED_CONTINUE;
 
 	updateStationIndex();
-	
 
-	
 	// セクションの開始からの開通距離
 	passableDistance = trackCircuit[signalIdx-1];	
 	double run = location - beaconLocation;
@@ -176,15 +175,13 @@ ATS_API void WINAPI SetBeaconData(ATS_BEACONDATA beaconData) {
 	int n = 0;
 
 	if (type == DATC_BEACON) {
-		if (sendData < 0) {
+		if (sendData == 0) {
 			passableDistance = 0;
 			passableEnd = 0;
-			beaconLocation = -1.0 * (double)sendData;
-			loopNum++;
-			loopNum %= 100;
+			beaconLocation = location;
 			return;
 		}
-		trackCircuit[sendData - 1] = sectionDistance;
+		trackCircuit[sendData - 1] = sectionDistance; 
 	} else if (type == SET_STATION_SECTION_START) {
 		n = sendData / 1000000;
 		if (n > 0 && n < 100) {
@@ -203,6 +200,17 @@ ATS_API void WINAPI SetBeaconData(ATS_BEACONDATA beaconData) {
 
 	}
 }
+// --------------------------------------------------------
+// 駅番号更新
+void updateStationIndex() {
+	int id = staSection[stationIdx].id;
+	if (id < 0) return;
+	int eDis = staSection[stationIdx].end;
+	if ((double)eDis < location && stationIdx < 98)
+		stationIdx++;
+}
+// --------------------------------------------------------
+// 減速度に対するパターンを生成
 double getPatternBxN(double remDis, double dec) {
 	double margin = 5.0;
 	double pattern =
@@ -210,10 +218,12 @@ double getPatternBxN(double remDis, double dec) {
 	return pattern;
 }
 // --------------------------------------------------------
+// ブレーキパターンに達しているか
 bool isBrakePattern(double remDis, double dec) {
 	return (getPatternBxN(remDis, dec) > speed) ? false : true;
 }
 // --------------------------------------------------------
+// ブレーキパターンに接近しているか
 bool isPatternAP(double remDis, double dec) {
 	double postion = speed / 3600.0 * 2.5 * 1000.0;
 	return (getPatternBxN(remDis - postion, dec) >= speed) ? false : true;
@@ -237,49 +247,43 @@ int getDigitOfNumber(int num, int digit, int rt) {
 void dispTrackCircuit(int* panel, double remDis) {
 	if (remDis >= 1000) {
 		for (int i = 0; i < 10; ++i)
-			panel[KAITSU_SECTION + i] = 32;
+			panel[KAITSU_SECTION + i] = SPLIT;
 		return;
 	}
 	for (int i = 0; i < 10; ++i) {
 		if (remDis >= (double)(i+1)*100.0) {
-			panel[KAITSU_SECTION + i] = 32;
-			panel[TEISHI_SECTION + i] = 32;
+			panel[KAITSU_SECTION + i] = SPLIT;
+			panel[TEISHI_SECTION + i] = SPLIT;
 			continue;
 		}
 		double rDis = remDis - (double)(i*100);
 		panel[KAITSU_SECTION + i] =
-			(int)(rDis / 100.0 * 32.0);
+			(int)(rDis / 100.0 * (double)SPLIT);
 		int idx = panel[KAITSU_SECTION + i];
 
 		panel[TEISHI_SECTION + i] = idx;
 		
 		for (int j = i + 1; j < 10; ++j) {
 			panel[KAITSU_SECTION + j] = 0;
-			panel[TEISHI_SECTION + j] = 32;
+			panel[TEISHI_SECTION + j] = SPLIT;
 			if (idx > 0) {
-				panel[TEISHI_SECTION + j] = 31 + idx;
+				panel[TEISHI_SECTION + j] = SPLIT - 1 + idx;
 				idx = 0;
 			}
 		}
 		return;
 	}
 }
-void updateStationIndex() {
-	int id = staSection[stationIdx].id;
-	if (id < 0) return;
-	int eDis = staSection[stationIdx].end;
-	if ((double)eDis < location && stationIdx < 98)
-		stationIdx++;
-}
+// --------------------------------------------------------
 void dispStationSectionOut(int* panel, double remDis, int i) {
-	int idx = (int)((remDis - 100.0 * i) / 100.0 * 32.0);
-	panel[STATION_SECTION + i] = 32 + idx;
-	for (int j = i ; j < 10; ++j) panel[STATION_SECTION + j] = 32;
+	int idx = (int)((remDis - 100.0 * i) / 100.0 * (double)SPLIT);
+	panel[STATION_SECTION + i] = SPLIT + idx;
+	for (int j = i ; j < 10; ++j) panel[STATION_SECTION + j] = SPLIT;
 }
 // --------------------------------------------------------
 void dispStationSection(int* panel, double remDis, int staNum, int loopCnt) {
 	if (loopCnt == 0)
-		for (int i = 0; i < 10; ++i) panel[STATION_SECTION + i] = 32;
+		for (int i = 0; i < 10; ++i) panel[STATION_SECTION + i] = SPLIT;
 
 	int id = staNum;
 	if (id < 0) return;
@@ -302,7 +306,7 @@ void dispStationSection(int* panel, double remDis, int staNum, int loopCnt) {
 
 		if (remSDis > 100) {
 			// 駅閉塞100m圏外
-			panel[STATION_SECTION + i] = 32;
+			panel[STATION_SECTION + i] = SPLIT;
 			continue; 
 		}
 
@@ -315,7 +319,7 @@ void dispStationSection(int* panel, double remDis, int staNum, int loopCnt) {
 				// panel[203] = i;
 
 				// if (d <= remDis)
-				idx = (int)(d / 100.0 * 32.0);
+				idx = (int)(d / 100.0 * (double)SPLIT);
 				
 				// panel[STATION_SECTION + i] = 32 + idx;
 
@@ -329,14 +333,14 @@ void dispStationSection(int* panel, double remDis, int staNum, int loopCnt) {
 				
 				if ((int)remSDis >= (int)d) {
 					// まだ駅閉塞に達していないとき
-					panel[STATION_SECTION + i] = 31;
+					panel[STATION_SECTION + i] = SPLIT - 1;
 				} else {
 					// いま駅閉塞にいるとき
-					panel[STATION_SECTION + i] = 32 + idx;
+					panel[STATION_SECTION + i] = SPLIT + idx;
 				}
 
 				for (int j = i + 1; j < 10; ++j) 
-					panel[STATION_SECTION + j] = 32;
+					panel[STATION_SECTION + j] = SPLIT;
 			} else {
 				int cnt = 0;
 				while (d < 0) {
@@ -358,17 +362,17 @@ void dispStationSection(int* panel, double remDis, int staNum, int loopCnt) {
 				panel[STATION_SECTION + i] = 0;
 				continue;
 			}
-			idx = (int)(remEDis / 100.0 * 32.0);
-			panel[STATION_SECTION + i] = 32 + idx;
+			idx = (int)(remEDis / 100.0 * (double)SPLIT);
+			panel[STATION_SECTION + i] = SPLIT + idx;
 			for (int j = i + 1; j < 10; ++j) 
-				panel[STATION_SECTION + j] = 32;
+				panel[STATION_SECTION + j] = SPLIT;
 
 			if (i + 1 < 10)
 				dispStationSection(panel, remDis, id + 1, i + 1);
 			break;
 		} else if (remSDis >= 0) {
 			// 駅閉塞開始まであと
-			idx = (int)(remSDis / 100.0 * 32.0);
+			idx = (int)(remSDis / 100.0 * (double)SPLIT);
 			panel[STATION_SECTION + i] = idx;
 			continue;
 		}
